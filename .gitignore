@@ -1,0 +1,60 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build outputs
+.output
+.nuxt
+dist
+.cache
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode
+.idea
+*.iml
+
+# Testing
+coverage
+.nyc_output
+
+# Prisma
+prisma/migrations/**/migration.sql
+!prisma/migrations/20260129123320_init/migration.sql
+
+# Database
+*.db
+*.db-journal
+database.db
+dev.db
+
+# Temporary files
+*.tmp
+*.temp
+test-*.js
+test-*.mjs
+check-*.js
+check-*.mjs
+
+# Credentials
+credentials.json
+*.pem
+*.key
