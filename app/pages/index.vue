@@ -1,45 +1,67 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, watch } from 'vue'
 
-const posts = ref<any[]>([])
-const categories = ref<any[]>([])
-const loading = ref(true)
-const error = ref<string | null>(null)
+const route = useRoute()
 const selectedCategory = ref<string | null>(null)
 const mobileCatOpen = ref(false)
 
-async function fetchCategories() {
-  try {
-    const response = await $fetch('/api/categories')
-    categories.value = response.data
-  } catch (e: any) {
-    console.error('获取分类失败', e)
-  }
-}
-
-async function fetchPosts() {
-  try {
-    loading.value = true
-    const params: any = {}
-    if (selectedCategory.value) {
-      params.category = selectedCategory.value
-    }
-    const response = await $fetch('/api/posts', { query: params })
-    posts.value = response.data.posts
-  } catch (e: any) {
-    error.value = e.message
-  } finally {
-    loading.value = false
-  }
-}
-
-watch(selectedCategory, () => {
-  fetchPosts()
+// 使用 useFetch 进行 SSR 数据获取
+const { data: categoriesData, pending: categoriesLoading } = await useFetch('/api/categories', {
+  transform: (res: any) => res.data
 })
 
+const { data: postsData, pending: postsLoading, error, refresh } = await useFetch('/api/posts', {
+  query: {
+    category: selectedCategory
+  },
+  transform: (res: any) => res.data.posts,
+  watch: [selectedCategory]
+})
+
+const posts = computed(() => postsData.value || [])
+const categories = computed(() => categoriesData.value || [])
+const loading = computed(() => postsLoading.value || categoriesLoading.value)
+
+// SEO Meta
+useSeoMeta({
+  title: '首页 - My Blog',
+  description: '分享技术、思考和生活点滴的博客',
+  ogTitle: 'My Blog',
+  ogDescription: '分享技术、思考和生活点滴的博客',
+  ogType: 'website',
+  twitterCard: 'summary'
+})
+
+// 结构化数据
+useHead({
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: computed(() => JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: 'My Blog',
+        description: '分享技术、思考和生活点滴的博客',
+        url: 'https://note.88931823.xyz',
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: 'https://note.88931823.xyz/?search={search_term_string}',
+          'query-input': 'required name=search_term_string'
+        }
+      }))
+    }
+  ]
+})
+
+watch(selectedCategory, () => {
+  refresh()
+})
+
+// 从 URL 参数读取分类
 onMounted(() => {
-  fetchCategories()
-  fetchPosts()
+  if (route.query.category) {
+    selectedCategory.value = route.query.category as string
+  }
 })
 </script>
 

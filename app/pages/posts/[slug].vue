@@ -1,25 +1,100 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-
 const route = useRoute()
-const post = ref<any>(null)
-const loading = ref(true)
-const error = ref<string | null>(null)
 
-async function fetchPost() {
-  try {
-    loading.value = true
-    const response = await $fetch(`/api/posts/${route.params.slug}`)
-    post.value = response.data
-  } catch (e: any) {
-    error.value = e.message
-  } finally {
-    loading.value = false
+// 使用 useFetch 进行 SSR 数据获取
+const { data: postData, pending: loading, error } = await useFetch(`/api/posts/${route.params.slug}`, {
+  transform: (res: any) => res.data
+})
+
+const post = computed(() => postData.value)
+
+// 提取第一张图片（如果有）
+const coverImage = computed(() => {
+  if (!post.value) return null
+
+  // 1. 优先使用 coverImage 字段
+  if (post.value.coverImage) {
+    return post.value.coverImage
   }
-}
 
-onMounted(() => {
-  fetchPost()
+  // 2. 从内容中提取第一张图片
+  if (post.value.content) {
+    const imgRegex = /<img[^>]+src="([^">]+)"/i
+    const match = post.value.content.match(imgRegex)
+    if (match && match[1]) {
+      return match[1]
+    }
+  }
+
+  return null
+})
+
+// 提取纯文本描述
+const plainDescription = computed(() => {
+  if (!post.value) return '查看文章详情'
+  if (post.value.excerpt) return post.value.excerpt
+  if (post.value.content) {
+    return post.value.content.replace(/<[^>]+>/g, '').slice(0, 160)
+  }
+  return '查看文章详情'
+})
+
+// SEO Meta & 结构化数据
+useHead(() => {
+  if (!post.value) {
+    return {
+      title: '文章详情 - My Blog'
+    }
+  }
+
+  const fullTitle = `${post.value.title} - My Blog`
+  const url = `https://note.88931823.xyz/posts/${route.params.slug}`
+
+  return {
+    title: fullTitle,
+    meta: [
+      { name: 'description', content: plainDescription.value },
+      { property: 'og:title', content: post.value.title },
+      { property: 'og:description', content: post.value.excerpt || plainDescription.value },
+      { property: 'og:type', content: 'article' },
+      { property: 'og:url', content: url },
+      ...(coverImage.value ? [{ property: 'og:image', content: coverImage.value }] : []),
+      { name: 'twitter:card', content: coverImage.value ? 'summary_large_image' : 'summary' },
+      ...(coverImage.value ? [{ name: 'twitter:image', content: coverImage.value }] : []),
+      { name: 'article:author', content: post.value.author?.name },
+      { name: 'article:published_time', content: post.value.publishedAt },
+      { name: 'article:modified_time', content: post.value.updatedAt }
+    ],
+    script: [
+      {
+        type: 'application/ld+json',
+        innerHTML: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: post.value.title,
+          description: post.value.excerpt,
+          image: coverImage.value,
+          datePublished: post.value.publishedAt,
+          dateModified: post.value.updatedAt,
+          author: {
+            '@type': 'Person',
+            name: post.value.author.name,
+            email: post.value.author.email
+          },
+          publisher: {
+            '@type': 'Organization',
+            name: 'My Blog',
+            url: 'https://note.88931823.xyz'
+          },
+          url: url,
+          mainEntityOfPage: {
+            '@type': 'WebPage',
+            '@id': url
+          }
+        })
+      }
+    ]
+  }
 })
 </script>
 
