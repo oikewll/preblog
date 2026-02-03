@@ -66,9 +66,22 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // 验证文件类型
+  // 验证文件类型（优先用 headers，fallback 按后缀推断）
+  const extMimeMap: Record<string, string> = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp'
+  }
+  const fileExt = path.extname(filePart.filename).toLowerCase()
+  const contentType =
+    filePart.headers?.['content-type'] ||
+    filePart.headers?.['Content-Type'] ||
+    extMimeMap[fileExt] ||
+    'application/octet-stream'
+
   const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-  const contentType = filePart.headers?.['content-type'] || 'application/octet-stream'
   if (!allowedTypes.includes(contentType)) {
     throw createError({
       statusCode: 400,
