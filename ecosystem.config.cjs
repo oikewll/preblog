@@ -14,7 +14,7 @@ module.exports = {
         S3_REGION: 'ap-southeast-1',
         S3_BUCKET: 'test-pandelivery',
         S3_ENDPOINT: '',
-        S3_PUBLIC_URL: 'https://s3.33486698.xyz',
+        S3_PUBLIC_URL: 'https://test-pandelivery.s3.ap-southeast-1.amazonaws.com',
       },
       // 日志
       log_date_format: 'YYYY-MM-DD HH:mm:ss',
