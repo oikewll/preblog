@@ -20,6 +20,7 @@ const categories = ref<any[]>([])
 const tags = ref<any[]>([])
 const loading = ref(true)
 const saving = ref(false)
+const uploading = ref(false)
 const error = ref('')
 const showPreview = ref(false)
 const previewContent = ref('')
@@ -140,6 +141,33 @@ function generateSlug() {
   }
 }
 
+// 上传封面图到 S3（经 API 中转）
+async function uploadCoverImage(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+
+  uploading.value = true
+  error.value = ''
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await $fetch<{ url: string }>('/api/admin/upload', {
+      method: 'POST',
+      body: formData
+    })
+    form.value.coverImage = res.url
+  } catch (e: any) {
+    error.value = e.message || '上传失败'
+  } finally {
+    uploading.value = false
+  }
+}
+
+// 清除封面图
+function removeCoverImage() {
+  form.value.coverImage = ''
+}
+
 onMounted(() => {
   fetchPost()
   fetchCategories()
@@ -241,15 +269,40 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- 封面图 -->
+        <!-- 封面图上传 -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">封面图 URL</label>
-          <input
-            v-model="form.coverImage"
-            type="text"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            placeholder="https://..."
-          />
+          <label class="block text-sm font-medium text-gray-700 mb-2">封面图</label>
+
+          <!-- 已上传预览 -->
+          <div v-if="form.coverImage" class="mb-3 relative rounded-md overflow-hidden border border-gray-200">
+            <img :src="form.coverImage" alt="封面图预览" class="w-full max-h-48 object-cover" />
+            <button
+              @click="removeCoverImage"
+              type="button"
+              class="absolute top-2 right-2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white text-xs px-2 py-1 rounded"
+            >
+              删除
+            </button>
+          </div>
+
+          <!-- 上传按钮 -->
+          <div v-if="!form.coverImage">
+            <input
+              id="cover-upload-edit"
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              class="sr-only"
+              @change="uploadCoverImage"
+            />
+            <label
+              for="cover-upload-edit"
+              class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md cursor-pointer"
+            >
+              <span>📎</span>
+              <span>{{ uploading ? '上传中...' : '选择封面图' }}</span>
+            </label>
+            <p class="mt-1 text-xs text-gray-500">支持 jpg / png / gif / webp，最大 10MB</p>
+          </div>
         </div>
 
         <!-- 分类 -->
