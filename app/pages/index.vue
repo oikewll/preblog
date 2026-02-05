@@ -176,51 +176,63 @@ onMounted(() => {
             <article
               v-for="post in posts"
               :key="post.id"
-              class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200"
+              class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden"
             >
-              <NuxtLink :to="`/posts/${post.slug || post.id}`" class="block p-4 md:p-6">
-                <!-- 顶行：分类 + 日期 -->
-                <div class="flex items-center justify-between mb-2 md:mb-3">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span v-if="post.category" class="px-2.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
-                      {{ post.category.name }}
-                    </span>
-                    <span class="text-xs text-gray-400">
-                      {{ new Date(post.publishedAt).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }) }}
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-1 text-xs text-gray-400">
-                    <span>👁️</span>
-                    <span>{{ post.views || 0 }}</span>
-                  </div>
+              <NuxtLink :to="`/posts/${post.slug || post.id}`" class="block">
+                <!-- 封面图（如果有） -->
+                <div v-if="post.coverImage" class="aspect-video w-full overflow-hidden bg-gray-100">
+                  <img
+                    :src="post.coverImage"
+                    :alt="post.title"
+                    class="w-full h-full object-cover"
+                    loading="lazy"
+                  />
                 </div>
 
-                <!-- 标题 -->
-                <h2 class="text-lg md:text-xl font-bold text-gray-900 mb-1.5 md:mb-2 hover:text-blue-600 transition-colors">
-                  {{ post.title }}
-                </h2>
-
-                <!-- 摘要 -->
-                <p v-if="post.excerpt" class="text-gray-500 text-sm md:text-base mb-3 md:mb-4 line-clamp-2">
-                  {{ post.excerpt }}
-                </p>
-
-                <!-- 底行：作者 + 标签 -->
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <div class="w-6 h-6 md:w-7 md:h-7 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span class="text-xs font-semibold text-blue-700">{{ post.author.name.charAt(0) }}</span>
+                <div class="p-4 md:p-6">
+                  <!-- 顶行：分类 + 日期 -->
+                  <div class="flex items-center justify-between mb-2 md:mb-3">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span v-if="post.category" class="px-2.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
+                        {{ post.category.name }}
+                      </span>
+                      <span class="text-xs text-gray-400">
+                        {{ new Date(post.publishedAt).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }) }}
+                      </span>
                     </div>
-                    <span class="text-sm text-gray-600">{{ post.author.name }}</span>
+                    <div class="flex items-center gap-1 text-xs text-gray-400">
+                      <span>👁️</span>
+                      <span>{{ post.views || 0 }}</span>
+                    </div>
                   </div>
-                  <div v-if="post.tags && post.tags.length > 0" class="flex items-center gap-1.5">
-                    <span
-                      v-for="item in post.tags.slice(0, 2)"
-                      :key="item.tag.id"
-                      class="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full"
-                    >
-                      #{{ item.tag.name }}
-                    </span>
+
+                  <!-- 标题 -->
+                  <h2 class="text-lg md:text-xl font-bold text-gray-900 mb-1.5 md:mb-2 hover:text-blue-600 transition-colors">
+                    {{ post.title }}
+                  </h2>
+
+                  <!-- 摘要 -->
+                  <p v-if="post.excerpt" class="text-gray-500 text-sm md:text-base mb-3 md:mb-4 line-clamp-2">
+                    {{ post.excerpt }}
+                  </p>
+
+                  <!-- 底行：作者 + 标签 -->
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <div class="w-6 h-6 md:w-7 md:h-7 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span class="text-xs font-semibold text-blue-700">{{ post.author.name.charAt(0) }}</span>
+                      </div>
+                      <span class="text-sm text-gray-600">{{ post.author.name }}</span>
+                    </div>
+                    <div v-if="post.tags && post.tags.length > 0" class="flex items-center gap-1.5">
+                      <span
+                        v-for="item in post.tags.slice(0, 2)"
+                        :key="item.tag.id"
+                        class="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full"
+                      >
+                        #{{ item.tag.name }}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </NuxtLink>

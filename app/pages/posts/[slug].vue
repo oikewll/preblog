@@ -117,31 +117,23 @@ useHead(() => {
 
       <!-- 文章内容 -->
       <article v-else-if="post" class="bg-white rounded-lg shadow-sm overflow-hidden">
-        <!-- 文章头部 -->
-        <div class="px-4 md:px-6 py-6 md:py-8 border-b">
-          <div class="flex items-center flex-wrap gap-2 mb-3 md:mb-4">
+        <!-- 文章头部（元信息 + 作者，无标题和简介） -->
+        <div class="px-4 md:px-6 py-4 md:py-6 border-b bg-gray-50">
+          <!-- 第一行：分类 + 日期 + 浏览量 -->
+          <div class="flex items-center flex-wrap gap-2 mb-4">
             <span v-if="post.category" class="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
               {{ post.category.name }}
             </span>
             <span class="text-sm text-gray-500">
               {{ new Date(post.publishedAt).toLocaleDateString('zh-CN') }}
             </span>
-            <div class="flex items-center gap-1 ml-auto">
-              <span class="text-sm text-gray-500">👁️</span>
-              <span class="text-sm text-gray-600">{{ post.views }}</span>
+            <div class="flex items-center gap-1 text-sm text-gray-500">
+              <span>👁️</span>
+              <span>{{ post.views }}</span>
             </div>
           </div>
 
-          <!-- 标题：手机缩小 -->
-          <h1 class="text-2xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4 leading-tight">
-            {{ post.title }}
-          </h1>
-
-          <p v-if="post.excerpt" class="text-base md:text-xl text-gray-600 mb-3 md:mb-4">
-            {{ post.excerpt }}
-          </p>
-
-          <!-- 作者 -->
+          <!-- 作者信息 -->
           <div class="flex items-center gap-3">
             <div class="w-9 h-9 md:w-10 md:h-10 bg-gray-200 rounded-full flex items-center justify-center">
               <span class="text-base md:text-lg font-medium text-gray-600">{{ post.author.name.charAt(0) }}</span>
