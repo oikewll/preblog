@@ -5,7 +5,8 @@ export default defineNuxtConfig({
 
   modules: [
     '@nuxtjs/tailwindcss',
-    '@nuxt/icon'
+    '@nuxt/icon',
+    'nuxt-s3-upload'  // ← 新增
   ],
 
   tailwindcss: {
@@ -15,9 +16,18 @@ export default defineNuxtConfig({
     viewer: true,
   },
 
+  // ← 新增：S3 上传模块配置
+  s3Upload: {
+    mode: 'api',                      // API 中转上传（原逻辑）
+    allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+    maxFileSize: 10 * 1024 * 1024,   // 10MB
+    keyPrefix: 'uploads/',
+    presignExpires: 300
+  },
+
   runtimeConfig: {
     // Private keys (server-side only)
-    jwtSecret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production',
+    jwtSecret: process.env.JWT_SECRET || 'your-super-secret-jwt-change-in-production',
     jwtExpiresIn: '7d',
     databaseUrl: process.env.DATABASE_URL || 'postgresql://superman:superman@localhost:5432/preblog',
 

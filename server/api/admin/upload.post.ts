@@ -1,8 +1,6 @@
 import jwt from 'jsonwebtoken'
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
-import { readMultipartFormData } from 'h3'
-import { randomUUID } from 'crypto'
-import path from 'path'
+import { createPresignedPost } from '@aws-sdk/s3-presigned-post'
+import { S3Client } from '@aws-sdk/client-s3'
 
 async function verifyAuth(event: any) {
   const token = getCookie(event, 'auth-token')
@@ -10,7 +8,7 @@ async function verifyAuth(event: any) {
   if (!token) {
     throw createError({
       statusCode: 401,
-      statusMessage: '未登录'
+      message: '未登录'
     })
   }
 
@@ -21,7 +19,7 @@ async function verifyAuth(event: any) {
     if (decoded.role !== 'ADMIN') {
       throw createError({
         statusCode: 403,
-        statusMessage: '无权访问'
+        message: '无权访问'
       })
     }
 
@@ -29,7 +27,7 @@ async function verifyAuth(event: any) {
   } catch (error) {
     throw createError({
       statusCode: 401,
-      statusMessage: 'Token 无效或已过期'
+      message: 'Token 无效或已过期'
     })
   }
 }
@@ -38,101 +36,93 @@ export default defineEventHandler(async (event) => {
   // 验证权限
   await verifyAuth(event)
 
-  const config = useRuntimeConfig()
+  try {
+    const formData = await readFormData(event)
+    const file = formData.get('file') as File
 
-  // 校查 S3 配置是否存在
-  if (!config.s3AccessKeyId || !config.s3SecretAccessKey || !config.s3Bucket || !config.s3Region) {
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'S3 配置不完整，请检查环境变量'
-    })
-  }
-
-  // 解析 multipart 表单数据
-  const formData = await readMultipartFormData(event)
-  if (!formData) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: '未上传文件'
-    })
-  }
-
-  // 找到文件部分
-  const filePart = formData.find(part => part.name === 'file' && part.filename)
-  if (!filePart || !filePart.data || !filePart.filename) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: '未上传文件'
-    })
-  }
-
-  // 验证文件类型（优先用 headers，fallback 按后缀推断）
-  const extMimeMap: Record<string, string> = {
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.png': 'image/png',
-    '.gif': 'image/gif',
-    '.webp': 'image/webp'
-  }
-  const fileExt = path.extname(filePart.filename).toLowerCase()
-  const contentType =
-    filePart.headers?.['content-type'] ||
-    filePart.headers?.['Content-Type'] ||
-    extMimeMap[fileExt] ||
-    'application/octet-stream'
-
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-  if (!allowedTypes.includes(contentType)) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: '不支持的文件类型，仅允许 jpg/png/gif/webp'
-    })
-  }
-
-  // 限制文件大小（10MB）
-  if (filePart.data.length > 10 * 1024 * 1024) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: '文件大小超限，最大 10MB'
-    })
-  }
-
-  // 生成唯一文件名，保留原始后缀
-  const ext = path.extname(filePart.filename)
-  const key = `covers/${randomUUID()}${ext}`
-
-  // 初始化 S3 客户端
-  const s3Config: any = {
-    region: config.s3Region,
-    credentials: {
-      accessKeyId: config.s3AccessKeyId,
-      secretAccessKey: config.s3SecretAccessKey
+    if (!file) {
+      throw createError({
+        statusCode: 400,
+        message: '未找到文件'
+      })
     }
-  }
 
-  // 支持 S3 兼容服务（MinIO / Cloudflare R2 等）
-  if (config.s3Endpoint) {
-    s3Config.endpoint = config.s3Endpoint
-    s3Config.forcePathStyle = true
-  }
+    // 验证文件类型
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      throw createError({
+        statusCode: 400,
+        message: '不支持的文件类型'
+      })
+    }
 
-  const s3 = new S3Client(s3Config)
+    // 验证文件大小（10MB）
+    const maxSize = 10 * 1024 * 1024
+    if (file.size > maxSize) {
+      throw createError({
+        statusCode: 400,
+        message: '文件大小超过限制（10MB）'
+      })
+    }
 
-  // 上传文件到 S3
-  await s3.send(new PutObjectCommand({
-    Bucket: config.s3Bucket,
-    Key: key,
-    Body: filePart.data,
-    ContentType: contentType,
-    CacheControl: 'public, max-age=31536000'
-  }))
+    // 生成文件名
+    const ext = file.name.split('.').pop()
+    const key = `covers/${crypto.randomUUID()}.${ext}`
 
-  // 拼接公开访问 URL
-  const baseUrl = (config.s3PublicUrl || '').replace(/\/$/, '')
-  const url = `${baseUrl}/${key}`
+    // 上传到 S3
+    const config = useRuntimeConfig()
+    const s3Client = new S3Client({
+      region: config.s3Region,
+      endpoint: config.s3Endpoint,
+      credentials: {
+        accessKeyId: config.s3AccessKeyId,
+        secretAccessKey: config.s3SecretAccessKey
+      }
+    })
 
-  return {
-    success: true,
-    url
+    const { url, fields } = await createPresignedPost(s3Client, {
+      Bucket: config.s3Bucket,
+      Key: key,
+      Conditions: [
+        ['content-length-range', 1, maxSize],
+        ['starts-with', '$Content-Type', file.type]
+      ],
+      Fields: {
+        'Content-Type': file.type
+      },
+      Expires: 600
+    })
+
+    // 使用 fetch 上传文件到 S3
+    const formDataS3 = new FormData()
+    Object.entries(fields).forEach(([key, value]) => {
+      formDataS3.append(key, value as string)
+    })
+    formDataS3.append('file', file)
+
+    const uploadResponse = await fetch(url, {
+      method: 'POST',
+      body: formDataS3
+    })
+
+    if (!uploadResponse.ok) {
+      throw createError({
+        statusCode: 500,
+        message: 'S3 上传失败'
+      })
+    }
+
+    // 返回公网访问 URL
+    const publicUrl = `${config.s3PublicUrl}/${key}`
+
+    return {
+      success: true,
+      url: publicUrl
+    }
+  } catch (error: any) {
+    throw createError({
+      statusCode: error.statusCode || 500,
+      message: error.message || '上传失败'
+    })
   }
 })
