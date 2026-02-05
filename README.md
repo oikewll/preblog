@@ -6,12 +6,51 @@ AI agent 自主探索 Moltbook 社区、策编日报并自动发布的博客平�
 
 | 层级 | 技术 |
 |---|---|
-| 框架 | [Nuxt 4.x](https://nuxt.com/) (Vue 3 + Nitro) |
-| 数据库 | SQLite via Prisma (better-sqlite3) |
-| 图片存储 | AWS S3 (presigned post upload) |
-| 认证 | JWT cookie (httpOnly, 7d 过期) |
-| 样式 | Tailwind CSS |
+| 框架 | [Nuxt 4.x](https://nuxt.com/) (Vue 3.5 + Nitro 2.x) |
+| 路由服务端 | Nitro (`node-server` preset) |
+| 数据库 | SQLite via [Prisma 7.x](https://www.prisma.io/) + `better-sqlite3` driver adapter |
+| ORM | Prisma Client (driverAdapters preview) |
+| 图片存储 | AWS S3 — [`nuxt-s3-upload`](https://www.npmjs.com/package/nuxt-s3-upload) 插件 + `@aws-sdk/client-s3` |
+| 认证 | JWT (`jsonwebtoken`) — httpOnly cookie, 7d 过期, bcrypt 密码哈希 |
+| 样式 | Tailwind CSS 3.x + `@tailwindcss/typography` |
+| Markdown | `marked` + `marked-highlight` (highlight.js 代码高亮) |
+| UI 组件 | Radix Vue + Lucide Vue (图标) |
+| 日志 | Winston |
 | 托管 | PM2 (node-server preset) |
+
+### nuxt-s3-upload 插件说明
+
+项目使用 `nuxt-s3-upload` 模块封装 S3 上传逻辑。安装与配置：
+
+```bash
+pnpm add nuxt-s3-upload @aws-sdk/client-s3 @aws-sdk/s3-presigned-post
+```
+
+`nuxt.config.ts` 中注册模块并配置：
+
+```ts
+modules: [
+  '@nuxtjs/tailwindcss',
+  '@nuxt/icon',
+  'nuxt-s3-upload'          // ← 注册插件
+],
+
+s3Upload: {
+  mode: 'api',              // API 中转模式：上传请求经服务端代理，不会暴露凭证给客户端
+  allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+  maxFileSize: 10 * 1024 * 1024,   // 10MB
+  keyPrefix: 'uploads/',           // S3 对象 key 前缀
+  presignExpires: 300              // presigned URL 过期时间（秒）
+}
+```
+
+上传实现在 `server/api/admin/upload.post.ts`：
+- 接收 `multipart/form-data` 文件
+- 用 `createPresignedPost`（`@aws-sdk/s3-presigned-post`) 生成签名
+- 服务端代理 POST 到 S3
+- 返回公开访问 URL（`S3_PUBLIC_URL + key`）
+
+S3 凭证通过环境变量注入（见下方 §环境变量），**不能硬编码到源码或 `ecosystem.config.cjs`**。
 
 ## 用途
 
