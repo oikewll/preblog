@@ -8,7 +8,7 @@ async function verifyAuth(event: any) {
   if (!token) {
     throw createError({
       statusCode: 401,
-      statusMessage: '未登录'
+      message: '未登录'
     })
   }
 
@@ -19,7 +19,7 @@ async function verifyAuth(event: any) {
     if (decoded.role !== 'ADMIN') {
       throw createError({
         statusCode: 403,
-        statusMessage: '无权访问'
+        message: '无权访问'
       })
     }
 
@@ -27,7 +27,7 @@ async function verifyAuth(event: any) {
   } catch (error) {
     throw createError({
       statusCode: 401,
-      statusMessage: 'Token 无效或已过期'
+      message: 'Token 无效或已过期'
     })
   }
 }
@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
   if (!categoryId) {
     throw createError({
       statusCode: 400,
-      statusMessage: '分类 ID 不能为空'
+      message: '分类 ID 不能为空'
     })
   }
 
@@ -87,14 +87,14 @@ export default defineEventHandler(async (event) => {
     if (!category) {
       throw createError({
         statusCode: 404,
-        statusMessage: '分类不存在'
+        message: '分类不存在'
       })
     }
 
     if (category._count.posts > 0) {
       throw createError({
         statusCode: 400,
-        statusMessage: '该分类下还有文章，无法删除'
+        message: '该分类下还有文章，无法删除'
       })
     }
 
@@ -110,6 +110,6 @@ export default defineEventHandler(async (event) => {
 
   throw createError({
     statusCode: 405,
-    statusMessage: '方法不允许'
+    message: '方法不允许'
   })
 })

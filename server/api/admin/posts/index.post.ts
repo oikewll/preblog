@@ -8,7 +8,7 @@ async function verifyAuth(event: any) {
   if (!token) {
     throw createError({
       statusCode: 401,
-      statusMessage: '未登录'
+      message: '未登录'
     })
   }
 
@@ -19,7 +19,7 @@ async function verifyAuth(event: any) {
     if (decoded.role !== 'ADMIN') {
       throw createError({
         statusCode: 403,
-        statusMessage: '无权访问'
+        message: '无权访问'
       })
     }
 
@@ -27,7 +27,7 @@ async function verifyAuth(event: any) {
   } catch (error) {
     throw createError({
       statusCode: 401,
-      statusMessage: 'Token 无效或已过期'
+      message: 'Token 无效或已过期'
     })
   }
 }
@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
   if (!body.title || !body.content) {
     throw createError({
       statusCode: 400,
-      statusMessage: '标题和内容不能为空'
+      message: '标题和内容不能为空'
     })
   }
 
