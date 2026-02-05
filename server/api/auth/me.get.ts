@@ -1,18 +1,20 @@
 import jwt from 'jsonwebtoken'
 import getPrisma from '../../../lib/prisma'
+import { useLogger } from '../../plugins/logger'
 
 export default defineEventHandler(async (event) => {
+  const logger = useLogger()
   const prisma = getPrisma()
   const token = getCookie(event, 'auth-token')
 
   if (!token) {
     throw createError({
       statusCode: 401,
-      statusMessage: '未登录'
+      message: '未登录'
     })
   }
 
-	try {
+  try {
     const config = useRuntimeConfig()
     const decoded = jwt.verify(token, config.jwtSecret) as any
 
@@ -30,9 +32,10 @@ export default defineEventHandler(async (event) => {
     })
 
     if (!user) {
+      logger.warn('Token 有效但用户不存在', { userId: decoded.userId })
       throw createError({
         statusCode: 401,
-        statusMessage: '用户不存在'
+        message: '用户不存在'
       })
     }
 
@@ -40,10 +43,12 @@ export default defineEventHandler(async (event) => {
       success: true,
       data: user
     }
-  } catch (error) {
+  } catch (error: any) {
+    if (error.statusCode) throw error // 已是 HttpError，直接抛出
+    logger.warn('Token 验证失败', { error: error.message, ip: getRequestIP(event) })
     throw createError({
       statusCode: 401,
-      statusMessage: 'Token 无效或已过期'
+      message: 'Token 无效或已过期'
     })
   }
 })
